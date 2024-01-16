@@ -1,0 +1,110 @@
+---
+title: "01-import"
+author: "CA Pellett"
+format: html
+execute: 
+  echo: false
+date: last-modified
+---
+
+```{r}
+library(magrittr)
+
+```
+As the SWAM models are developed and updated in each basin, in preparation for the River Basin Council Meetings, tables are prepared to facilitate review of the scenarios and compare SWAM inputs and outputs to other reference datasets.
+
+Current Use Scenario water demands are included in the raw data, or at least available by downloading the most recent version of SWAM. At this point, that data is not included in the package, but it would be nice to do so.
+
+What is currently needed, and included, is the relationship between SWAM objects and source water intakes in the water withdrawal database. This information is documented in a table of "joins". In earlier model versions, the join table related SWAM water user objects to withdrawal permit IDs. This is not sufficient in cases where not all intakes permitted under a given permit ID are included in the SWAM water user object. More recently, the format has been updated to join the SWAM objects to sourceids. 
+
+
+```{r}
+sourceids <- scwaterwithdrawal::intakes %>%
+  sf::st_drop_geometry() %>%
+  scwaterwithdrawal::parse_sourceid() %>%
+  dplyr::select(sourceid, userid)
+```
+
+# Broad Basin Model
+```{r}
+### The right way to do this is to join a SWAM ID to a set of intakes,
+### (or discharges, potentially). 
+## swamids table with 3 columns: basin_swam, swamid, sourceid
+swamids_brd <- readxl::read_xlsx('BroadCUandDemandSummary2021.xlsx',
+                             sheet='SWAM Join') %>%
+  dplyr::mutate(swam_model='Broad') %>%
+  dplyr::left_join(sourceids) %>%
+  dplyr::select(-userid) %>%
+  dplyr::rename(swamid=swamID)
+```
+This table joins the userids (withdrawal permits) to the swamIDs. It should join to intakes. For now, simply assume that all intakes associated with a withdrawal permit are also associated with the swam object.
+
+# Pee Dee Basin Model
+```{r}
+## I set this table up with a single sourceid for each swamID.
+## It should be all sourceids (and/or npdes ids) for each swamID
+swamids_pd0 <- read.csv('PeeDee.txt') %>%
+  dplyr::mutate(sourceid = stringr::str_trim(sourceid)) %>%
+  dplyr::mutate(swam_model='PeeDee') %>%
+  scwaterwithdrawal::parse_sourceid() %>%
+  dplyr::left_join(scwaterdemand::permit_system_joins, c('userid'='PermitID')) %>%
+  dplyr::select(swamid, sourceid, comments, swam_model, W_SystemID)
+
+swamids_pd1 <- swamids_pd0 %>%
+  dplyr::select(swamid, W_SystemID) %>%
+  dplyr::left_join(scwaterdemand::wsystem_portfolios) %>%
+  dplyr::select(swamid, sourceid) %>%
+  dplyr::anti_join(swamids_pd0) %>%
+  dplyr::mutate(swam_model='PeeDee', comments='assumed according to permit joins') %>%
+  dplyr::bind_rows(swamids_pd0)
+## that includes a lot of groundwater (wells) which maybe shouldn't be included...
+
+```
+This one includes sourceid, but it isn't correct. When I set it up, I included only a single sourceid for each swamID. It should include all sourceids (and/or npdes ids) for each swamID. To correct for that, I'm going to join all intakes from a given withdrawal system, as defined in the scwaterdemand package, to each associated swamID. 
+
+
+# Saluda Basin Model
+```{r}
+swamids_sld0 <- readxl::read_xlsx(
+  'Baseline Saluda Demands (for Alex P).xlsx',
+  sheet='swamid_joins')
+
+swamids_sld1 <- swamids_sld0 %>%
+  tidyr::pivot_longer(usersourceid1:usersourceid5) %>%
+  dplyr::filter(!is.na(value)) %>%
+  dplyr::mutate(swam_model='Saluda') %>%
+  dplyr::rename(swamid = swamID, sourceid=value) %>%
+  dplyr::select(swamid, sourceid, swam_model)
+
+```
+
+
+# Savannah Basin Model
+```{r}
+## Join table from intakes to swam objects.
+## Does not include ag placeholders (HUC10s)
+## Does not include discharge only objects.
+
+swamids_sav0 <- readxl::read_excel("Baseline Savannah Demands (for Alex).xlsx", 
+    sheet = "Join", skip = 3) %>%
+  dplyr::select(1:5) %>%
+  tidyr::pivot_longer(cols = !User, values_drop_na = TRUE) %>%
+  dplyr::select(swamid = User, sourceid = value)  %>%
+  dplyr::mutate(swam_model = 'Savannah')
+
+swamids_sav1 <- swamids_sav0 %>%
+  dplyr::filter(scwaterwithdrawal::sourceid_val(sourceid))
+
+```
+
+
+```{r}
+swamids <- dplyr::bind_rows(swamids_brd, swamids_pd1, swamids_sav1, swamids_sld1) %>%
+  dplyr::select(swamid, sourceid, swam_model, comments)
+
+```
+
+```{r}
+usethis::use_data(swamids, overwrite=T)
+
+```
