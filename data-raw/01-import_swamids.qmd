@@ -1,5 +1,5 @@
 ---
-title: "01-import"
+title: "1 Import SWAM IDs"
 author: "CA Pellett"
 format: html
 execute: 
@@ -13,7 +13,7 @@ library(magrittr)
 ```
 As the SWAM models are developed and updated in each basin, in preparation for the River Basin Council Meetings, tables are prepared to facilitate review of the scenarios and compare SWAM inputs and outputs to other reference datasets.
 
-Current Use Scenario water demands are included in the raw data, or at least available by downloading the most recent version of SWAM. At this point, that data is not included in the package, but it would be nice to do so.
+Current Use Scenario water demands are included in the raw data, or at least available by downloading the most recent version of SWAM. 
 
 What is currently needed, and included, is the relationship between SWAM objects and source water intakes in the water withdrawal database. This information is documented in a table of "joins". In earlier model versions, the join table related SWAM water user objects to withdrawal permit IDs. This is not sufficient in cases where not all intakes permitted under a given permit ID are included in the SWAM water user object. More recently, the format has been updated to join the SWAM objects to sourceids. 
 

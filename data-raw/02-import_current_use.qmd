@@ -1,0 +1,75 @@
+---
+title: "1 Import SWAM Current Use Scenario"
+author: "CA Pellett"
+format: html
+execute: 
+  echo: false
+date: last-modified
+---
+
+```{r}
+library(magrittr)
+
+```
+
+Current Use Scenario water demands are included in the raw data, or at least available by downloading the most recent version of SWAM. At this point, that data is not included in the package, but it would be nice to do so.
+
+# Saluda Basin Model
+```{r}
+getwd()
+
+cu_sld0 <- readxl::read_excel("Baseline Saluda Demands (for Alex P).xlsx", 
+    skip = 2, n_max = 13) %>%
+  dplyr::filter(dplyr::row_number() != 1) %>%
+  dplyr::rename(Month = Name) %>%
+  tidyr::pivot_longer(-Month, names_to = 'swamid', values_to = 'MGD')
+
+cu_sld_ag <- readxl::read_excel("Baseline Saluda Demands (for Alex P).xlsx", 
+    sheet = "Ag Objects", skip = 2, n_max = 13) %>%
+  dplyr::filter(dplyr::row_number() != 1) %>%
+  dplyr::rename(Month = Name) %>%
+  tidyr::pivot_longer(-Month, names_to = 'swamid', values_to = 'MGD')
+
+cu_sld <- dplyr::bind_rows(cu_sld0, cu_sld_ag) %>%
+  dplyr::mutate(MGD = as.numeric(MGD),
+                swam_model = 'Saluda')
+
+```
+
+# Savannah Basin Model
+```{r}
+cu_sav0 <- readxl::read_excel("Baseline Savannah Demands (for Alex).xlsx", 
+    skip = 1, n_max = 15) %>%
+  dplyr::filter(dplyr::row_number() > 3) %>%
+  dplyr::rename(Month = Name) %>%
+  tidyr::pivot_longer(-Month, names_to = 'swamid', values_to = 'MGD')
+
+cu_sav_ag <- readxl::read_excel("Baseline Savannah Demands (for Alex).xlsx", 
+    sheet = "ag users", n_max = 16) %>%
+  dplyr::filter(dplyr::row_number() > 4) %>%
+  dplyr::rename(Month = Name) %>%
+  tidyr::pivot_longer(-Month, names_to = 'swamid', values_to = 'MGD')
+
+cu_sav <- dplyr::bind_rows(cu_sav0, cu_sav_ag) %>%
+  dplyr::mutate(MGD = as.numeric(MGD),
+                swam_model = 'Savannah')
+```
+
+
+# Broad Basin Model
+
+
+# Pee Dee Basin Model
+
+
+```{r}
+swam_current_use <- dplyr::bind_rows(cu_sld, cu_sav) %>%
+  dplyr::mutate(Scenario = 'SWAM Current Use')
+
+```
+
+
+```{r}
+usethis::use_data(swam_current_use, overwrite=T)
+
+```
