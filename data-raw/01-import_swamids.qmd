@@ -52,15 +52,15 @@ swamids_pd0 <- read.csv('PeeDee.txt') %>%
 
 swamids_pd1 <- swamids_pd0 %>%
   dplyr::select(swamid, W_SystemID) %>%
-  dplyr::left_join(scwaterdemand::wsystem_portfolios) %>%
+  dplyr::left_join(scwaterdemand::wsystem_portfolios, 'W_SystemID') %>%
   dplyr::select(swamid, sourceid) %>%
-  dplyr::anti_join(swamids_pd0) %>%
+  dplyr::anti_join(swamids_pd0, c('swamid', 'sourceid')) %>%
   dplyr::mutate(swam_model='PeeDee', comments='assumed according to permit joins') %>%
   dplyr::bind_rows(swamids_pd0)
 ## that includes a lot of groundwater (wells) which maybe shouldn't be included...
 
 ```
-This one includes sourceid, but it isn't correct. When I set it up, I included only a single sourceid for each swamID. It should include all sourceids (and/or npdes ids) for each swamID. To correct for that, I'm going to join all intakes from a given withdrawal system, as defined in the scwaterdemand package, to each associated swamID. 
+This one includes sourceids, but it isn't correct. When I set it up, I included only a single sourceid for each swamID. It should include all sourceids (and/or npdes ids) for each swamID. To correct for that, I'm going to join all intakes from a given withdrawal system, as defined in the scwaterdemand package, to each associated swamID. 
 
 
 # Saluda Basin Model
@@ -76,8 +76,21 @@ swamids_sld1 <- swamids_sld0 %>%
   dplyr::rename(swamid = swamID, sourceid=value) %>%
   dplyr::select(swamid, sourceid, swam_model)
 
+swamids_sld1b <- swamids_sld1 %>%
+  dplyr::filter(!scwaterwithdrawal::sourceid_val(sourceid)) %>%
+## two rows, both are userids
+  dplyr::rename(userid=sourceid) %>%
+  dplyr::left_join(sourceids, 'userid') %>%
+  dplyr::select(-userid)
+
+swamids_sld2 <- swamids_sld1 %>%
+  dplyr::anti_join(swamids_sld1b, 'swamid') %>%
+  dplyr::bind_rows(swamids_sld1b)
+
+
 ```
 
+For some swamids, this table joins the userids (withdrawal permits). It should join to intakes. For now, simply assume that all intakes associated with a withdrawal permit are also associated with the swam object.
 
 # Savannah Basin Model
 ```{r}
@@ -95,11 +108,17 @@ swamids_sav0 <- readxl::read_excel("Baseline Savannah Demands (for Alex).xlsx",
 swamids_sav1 <- swamids_sav0 %>%
   dplyr::filter(scwaterwithdrawal::sourceid_val(sourceid))
 
+
+swamids_sav0 %>%
+  dplyr::filter(!scwaterwithdrawal::sourceid_val(sourceid))
+## 1 rows, IN: Clariant . There are two IN withdrawal permits named Clariant, 
+## both in Chester county, and neither reporting withdrawals after 2002...
+
 ```
 
 
 ```{r}
-swamids <- dplyr::bind_rows(swamids_brd, swamids_pd1, swamids_sav1, swamids_sld1) %>%
+swamids <- dplyr::bind_rows(swamids_brd, swamids_pd1, swamids_sav1, swamids_sld2) %>%
   dplyr::select(swamid, sourceid, swam_model, comments)
 
 ```
