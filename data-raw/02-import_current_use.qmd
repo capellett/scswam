@@ -61,9 +61,38 @@ cu_sav <- dplyr::bind_rows(cu_sav0, cu_sav_ag) %>%
 
 # Pee Dee Basin Model
 
+# Salkehatchie Basin Model
+```{r}
+cu_slk0 <- readxl::read_excel(
+  "SLK Baseline (Current Use) Demands.xlsx", skip = 3) |>
+  head(19) |>
+  tail(12) |>
+  tidyr::pivot_longer(`IR: Breland`:`IR: Withycombe Farm`) |>
+  dplyr::rename(Month=`Name:`, swamid=name, MGD=value) |>
+  dplyr::mutate(MGD = readr::parse_number(MGD))
+## some entries were in E notation, parse_number seems to work great.
+
+dplyr::filter(cu_slk0,
+              stringr::str_detect(stringr::str_sub(swamid, -1), '[:digit:]' ))
+## there are several repeat entries, swamid's repeated with a number at the end.
+## if i understand correctly, those are representative of swam outputs, where the demand would be divided.
+## the swam inputs would be the sum of those columns.
+
+## to fix, remove trailing numeric digit and then sum total for each swamid*month
+cu_slk <- cu_slk0 |>
+  dplyr::mutate(swamid = dplyr::if_else(
+    stringr::str_detect(stringr::str_sub(swamid, -1), '[:digit:]' ),
+    stringr::str_sub(swamid, 1, -2), swamid)) |>
+  dplyr::group_by(swamid, Month) |>
+  dplyr::summarise(MGD = sum(c(MGD, 0))) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(swam_model = 'Salkehatchie')
+
+```
+
 
 ```{r}
-swam_current_use <- dplyr::bind_rows(cu_sld, cu_sav) %>%
+swam_current_use <- dplyr::bind_rows(cu_sld, cu_sav, cu_slk) %>%
   dplyr::mutate(Scenario = 'SWAM Current Use')
 
 ```
