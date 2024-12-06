@@ -21,7 +21,7 @@ What is currently needed, and included, is the relationship between SWAM objects
 ```{r}
 sourceids <- scwaterwithdrawal::intakes |>
   sf::st_drop_geometry() |>
-  scwaterwithdrawal::parse_sourceid() |>
+  # scwaterwithdrawal::parse_sourceid() |>
   dplyr::select(sourceid, userid)
 ```
 
@@ -112,7 +112,8 @@ swamids_sav0 <- readxl::read_excel("Baseline Savannah Demands (for Alex).xlsx",
 
 swamids_sav1 <- swamids_sav0 |>
   dplyr::filter(scwaterwithdrawal::sourceid_val(sourceid))
-
+## this wont work with new sourceid format
+## todo: filter out empties
 
 swamids_sav0 |>
   dplyr::filter(!scwaterwithdrawal::sourceid_val(sourceid))
@@ -171,10 +172,17 @@ swamids_slk3 <- swamids_slk2 |>
 ## that should be a robust fix 
 ```
 
-
+# Santee Basin Model
 
 ```{r}
-swamids <- dplyr::bind_rows(swamids_brd, swamids_pd1, swamids_sav1, swamids_sld2, swamids_slk3) |>
+swamids_snt <- {}
+
+```
+
+
+# Combine and Export
+```{r}
+swamids <- dplyr::bind_rows(swamids_brd, swamids_pd1, swamids_sav1, swamids_sld2, swamids_slk3, swamids_snt) |>
   dplyr::select(swamid, sourceid, swam_model, comments)
 
 ```
